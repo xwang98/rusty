@@ -1,5 +1,9 @@
 // Copyright (c) 2020 Ghaith Hachem and Mathias Rieder
 use super::super::*;
+
+mod functions;
+mod programs;
+
 #[allow(dead_code)]
 #[repr(C)]
 struct MainType {
