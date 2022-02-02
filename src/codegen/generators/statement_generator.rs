@@ -18,7 +18,7 @@ use inkwell::{
     basic_block::BasicBlock,
     builder::Builder,
     context::Context,
-    values::{BasicValueEnum, FunctionValue},
+    values::{BasicValueEnum, FunctionValue, BasicValue},
 };
 use std::ops::Range;
 
@@ -759,14 +759,10 @@ impl<'a, 'b> StatementCodeGenerator<'a, 'b> {
 
             builder.position_at_end(then_block);
 
-            let condition = self
-                .create_expr_generator()
-                .generate_expression(&block.condition)?;
             let conditional_block = context.prepend_basic_block(else_block, "condition_body");
-
             //Generate if statement condition
             builder.build_conditional_branch(
-                condition.into_int_value(),
+                self.build_bool_evaluation(&block.condition)?.into_int_value(),
                 conditional_block,
                 else_block,
             );
@@ -795,6 +791,21 @@ impl<'a, 'b> StatementCodeGenerator<'a, 'b> {
             self.function_context.function,
             self.llvm.context,
         )
+    }
+
+    fn build_bool_evaluation(&'a self, condition: &AstStatement) -> Result<BasicValueEnum<'a>, Diagnostic>{
+        let condition = self
+            .create_expr_generator()
+            .generate_expression(condition)?;
+
+        let result = if condition.is_int_value() && condition.get_type().into_int_type().get_bit_width() > 1 {
+            let zero = condition.get_type().into_int_type().const_zero();
+            let int_condition = condition.into_int_value();
+            self.llvm.builder.build_int_compare(inkwell::IntPredicate::NE, int_condition, zero, "").as_basic_value_enum()
+        }else{
+            condition
+        };
+        Ok(result)
     }
 }
 

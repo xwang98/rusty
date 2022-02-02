@@ -20,7 +20,7 @@ use crate::{
     typesystem::{
         self, get_bigger_type, DataTypeInformation, StringEncoding, BOOL_TYPE, BYTE_TYPE,
         DATE_AND_TIME_TYPE, DATE_TYPE, DINT_TYPE, DWORD_TYPE, LINT_TYPE, REAL_TYPE,
-        TIME_OF_DAY_TYPE, TIME_TYPE, VOID_TYPE, WORD_TYPE,
+        TIME_OF_DAY_TYPE, TIME_TYPE, VOID_TYPE, WORD_TYPE, U1_TYPE,
     },
 };
 
@@ -261,7 +261,7 @@ impl AstAnnotations {
         AstAnnotations {
             annotation_map,
             bool_id,
-            bool_annotation: StatementAnnotation::value(BOOL_TYPE),
+            bool_annotation: StatementAnnotation::value(U1_TYPE),
         }
     }
 

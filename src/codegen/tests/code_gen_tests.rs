@@ -2821,3 +2821,23 @@ fn optional_output_assignment() {
     // codegen should be successful
     insta::assert_snapshot!(result);
 }
+
+#[test]
+fn assign_cmp_expression_to_bool() {
+    let result = codegen(
+        "
+		PROGRAM main
+			VAR
+				a : BOOL;
+				b : BOOL;
+				c : BOOL;
+                result : BOOL;
+			END_VAR
+			
+            result := (a AND B) OR C;
+		END_PROGRAM
+		",
+    );
+    // codegen should be successful
+    insta::assert_snapshot!(result);
+}
