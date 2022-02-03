@@ -52,8 +52,10 @@ output:                                           ; preds = %call
   br label %continue
 
 continue:                                         ; preds = %output
-  %tmpVar = xor i8 %call1, -1
-  store i8 %tmpVar, i8* %result, align 1
+  %7 = icmp ne i8 %call1, 0
+  %tmpVar = xor i1 %7, true
+  %8 = zext i1 %tmpVar to i8
+  store i8 %8, i8* %result, align 1
   %baz_ret = load i16, i16* %baz, align 2
   ret i16 %baz_ret
 }

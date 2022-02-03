@@ -354,14 +354,18 @@ impl<'a, 'b> ExpressionCodeGenerator<'a, 'b> {
         expression: &AstStatement,
     ) -> Result<BasicValueEnum<'a>, Diagnostic> {
         let value = match unary_operator {
-            Operator::Not => Ok(self
+            Operator::Not =>{
+                let lhs = self.generate_expression(expression)?.into_int_value();
+                let ne_zero = self.llvm.builder.build_int_compare(IntPredicate::NE, lhs, lhs.get_type().const_zero(), "");
+             Ok(self
                 .llvm
                 .builder
                 .build_not(
-                    self.generate_expression(expression)?.into_int_value(),
+                    ne_zero,
                     "tmpVar",
                 )
-                .as_basic_value_enum()),
+                .as_basic_value_enum())
+            },
             Operator::Minus => {
                 let generated_exp = self.generate_expression(expression)?;
                 if generated_exp.is_float_value() {
