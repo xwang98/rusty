@@ -2830,14 +2830,13 @@ fn assign_cmp_expression_to_bool() {
 			VAR
 				a : BOOL;
 				b : BOOL;
-				c : BOOL;
                 result : BOOL;
 			END_VAR
 			
-            result := (a AND B) OR C;
+            result := a AND b;
 		END_PROGRAM
 		",
     );
-    // codegen should be successful
+    // we want an i8 stored to result!
     insta::assert_snapshot!(result);
 }

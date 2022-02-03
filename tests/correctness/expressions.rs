@@ -47,7 +47,7 @@ fn equal_comparison_with_arbitrary_datatypes() {
             END_FUNCTION
 
             FUNCTION main : DINT
-            VAR_INPUT
+            VAR
                 result1 : DINT;
                 result2 : DINT;
             END_VAR

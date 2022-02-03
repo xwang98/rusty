@@ -354,14 +354,18 @@ impl<'a, 'b> ExpressionCodeGenerator<'a, 'b> {
         expression: &AstStatement,
     ) -> Result<BasicValueEnum<'a>, Diagnostic> {
         let value = match unary_operator {
-            Operator::Not => Ok(self
+            Operator::Not =>{
+                let lhs = self.generate_expression(expression)?.into_int_value();
+                let ne_zero = self.llvm.builder.build_int_compare(IntPredicate::NE, lhs, lhs.get_type().const_zero(), "");
+             Ok(self
                 .llvm
                 .builder
                 .build_not(
-                    self.generate_expression(expression)?.into_int_value(),
+                    ne_zero,
                     "tmpVar",
                 )
-                .as_basic_value_enum()),
+                .as_basic_value_enum())
+            },
             Operator::Minus => {
                 let generated_exp = self.generate_expression(expression)?;
                 if generated_exp.is_float_value() {
@@ -486,9 +490,7 @@ impl<'a, 'b> ExpressionCodeGenerator<'a, 'b> {
         //Create parameters for input and output blocks
         let current_f = function_context.function;
         let input_block = self.llvm.context.append_basic_block(current_f, "input");
-        let call_block = self.llvm.context.append_basic_block(current_f, "call");
         let output_block = self.llvm.context.append_basic_block(current_f, "output");
-        let continue_block = self.llvm.context.append_basic_block(current_f, "continue");
         //First go to the input block
         let builder = &self.llvm.builder;
         builder.build_unconditional_branch(input_block);
@@ -503,8 +505,10 @@ impl<'a, 'b> ExpressionCodeGenerator<'a, 'b> {
             &output_block,
         )?;
         //Generate the label jumps from input to call to output
+        let call_block = self.llvm.context.append_basic_block(current_f, "call");
         builder.build_unconditional_branch(call_block);
         builder.position_at_end(output_block);
+        let continue_block = self.llvm.context.append_basic_block(current_f, "continue");
         builder.build_unconditional_branch(continue_block);
         builder.position_at_end(call_block);
         let function = self

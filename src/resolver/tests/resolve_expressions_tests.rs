@@ -7,7 +7,7 @@ use crate::{
     test_utils::tests::annotate,
     typesystem::{
         DataTypeInformation, BOOL_TYPE, BYTE_TYPE, DINT_TYPE, DWORD_TYPE, INT_TYPE, REAL_TYPE,
-        SINT_TYPE, UINT_TYPE, USINT_TYPE, VOID_TYPE,
+        SINT_TYPE, UINT_TYPE, USINT_TYPE, VOID_TYPE, U1_TYPE, LINT_TYPE,
     },
 };
 
@@ -295,7 +295,7 @@ fn binary_expressions_resolves_types_with_float_comparisons() {
 
     //I want the expressions to be of type BOOL, the left and right of type REAL
     for s in statements.iter() {
-        assert_type_and_hint!(&annotations, &index, s, BOOL_TYPE, None);
+        assert_type_and_hint!(&annotations, &index, s, U1_TYPE, None);
 
         if let AstStatement::BinaryExpression { left, right, .. } = s {
             assert_type_and_hint!(&annotations, &index, left, REAL_TYPE, None);
@@ -322,7 +322,7 @@ fn binary_expressions_resolves_types_of_literals_with_float_comparisons() {
 
     //I want the '1' to be treated as a real right away (no casting involved)
     for s in statements.iter() {
-        assert_type_and_hint!(&annotations, &index, s, BOOL_TYPE, None);
+        assert_type_and_hint!(&annotations, &index, s, U1_TYPE, None);
 
         if let AstStatement::BinaryExpression { left, right, .. } = s {
             assert_type_and_hint!(&annotations, &index, left, REAL_TYPE, None);
@@ -562,7 +562,7 @@ fn necessary_promotions_should_be_type_hinted() {
     if let AstStatement::BinaryExpression { left, .. } = &statements[1] {
         assert_eq!(
             annotations.get_type(&statements[1], &index),
-            index.find_effective_type("BOOL")
+            index.find_effective_type(U1_TYPE)
         );
         assert_eq!(
             (
@@ -597,14 +597,9 @@ fn necessary_promotions_between_real_and_literal_should_be_type_hinted() {
     let annotations = annotate(&unit, &mut index);
     let statements = &unit.implementations[0].statements;
 
+    assert_type_and_hint!(&annotations, &index, &statements[0], U1_TYPE, None);
     // THEN we want '0' to be treated as a REAL right away, the result of f > 0 should be type bool
     if let AstStatement::BinaryExpression { right, .. } = &statements[0] {
-        assert_eq!(
-            annotations.get_type(&statements[0], &index),
-            index.find_effective_type("BOOL")
-        );
-
-        assert_type_and_hint!(&annotations, &index, &statements[0], BOOL_TYPE, None);
         assert_type_and_hint!(&annotations, &index, right.as_ref(), REAL_TYPE, None);
     } else {
         unreachable!();
@@ -2759,7 +2754,7 @@ fn int_compare_should_resolve_to_bool() {
     let a_eq_b = &unit.implementations[0].statements[0];
     assert_eq!(
         Some(&StatementAnnotation::Value {
-            resulting_type: "BOOL".to_string(),
+            resulting_type: U1_TYPE.to_string(),
         }),
         annotations.get(a_eq_b),
     );
@@ -2960,3 +2955,73 @@ fn call_on_function_block_array() {
         annotation
     );
 }
+
+
+#[test]
+fn bool_expressions_annotation() {
+    //GIVEN
+    let (unit, index) = index(
+        "
+        PROGRAM PRG
+		VAR
+			a,b,c : BOOL;
+		END_VAR
+            a OR B;
+            c := a OR B;
+        END_PROGRAM
+        ",
+    );
+
+    //WHEN the AST is annotated
+    let (annotations, _) = TypeAnnotator::visit_unit(&index, &unit);
+    
+    let a_or_b = &unit.implementations[0].statements[0];
+    let c_eq_exp = &unit.implementations[0].statements[1];
+
+    // THEN all parts of the expression should be annotated with BOOL
+    assert_type_and_hint!(&annotations, &index, a_or_b, DINT_TYPE, None);
+    if let AstStatement::BinaryExpression{ left: l, right:  r, ..} = a_or_b{
+        assert_type_and_hint!(&annotations, &index, l, BOOL_TYPE, Some(DINT_TYPE));
+        assert_type_and_hint!(&annotations, &index, r, BOOL_TYPE, Some(DINT_TYPE));
+    }else{
+        unreachable!("expected binary expression")
+    }
+
+    if let AstStatement::Assignment{ left: l, right:  r, ..} = c_eq_exp{
+        assert_type_and_hint!(&annotations, &index, l, BOOL_TYPE, None);
+        assert_type_and_hint!(&annotations, &index, r, DINT_TYPE, Some(BOOL_TYPE));
+    }else{
+        unreachable!("expected binary expression")
+    }
+} 
+
+#[test]
+fn compare_expression_annotation() {
+    //GIVEN
+    let (unit, index) = index(
+        r#"
+        PROGRAM prg
+        VAR
+            a : BYTE;
+            b : LINT;
+        END_VAR
+
+        b < a;
+        END_PROGRAM
+        "#,
+    );
+
+    //WHEN the AST is annotated
+    let (annotations, _) = TypeAnnotator::visit_unit(&index, &unit);
+    
+    let a_or_b = &unit.implementations[0].statements[0];
+
+    // THEN all parts of the expression should be annotated with BOOL
+    assert_type_and_hint!(&annotations, &index, a_or_b, U1_TYPE, None);
+    if let AstStatement::BinaryExpression{ left: l, right:  r, ..} = a_or_b{
+        assert_type_and_hint!(&annotations, &index, l, LINT_TYPE, None);
+        assert_type_and_hint!(&annotations, &index, r, BYTE_TYPE, Some(LINT_TYPE));
+    }else{
+        unreachable!("expected binary expression")
+    }
+} 

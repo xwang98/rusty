@@ -1,6 +1,6 @@
 use core::panic;
 
-use crate::{assert_type_and_hint, ast::AstStatement, test_utils::tests::index, TypeAnnotator};
+use crate::{assert_type_and_hint, ast::{AstStatement, ConditionalBlock}, test_utils::tests::index, TypeAnnotator, typesystem::DINT_TYPE};
 
 #[test]
 fn binary_expressions_resolves_types() {
@@ -29,5 +29,33 @@ fn binary_expressions_resolves_types() {
         assert_type_and_hint!(&annotations, &index, by_step, "DINT", Some("INT"));
     } else {
         panic!("no for loop statement");
+    }
+}
+
+#[test]
+fn bool_expression_in_if_annotation() {
+    //GIVEN
+    let (unit, index) = index(
+        "
+        PROGRAM PRG
+		VAR
+			a,b : BOOL;
+		END_VAR
+            IF (a OR B) THEN
+            END_IF
+        END_PROGRAM
+        ",
+    );
+
+    //WHEN the AST is annotated
+    let (annotations, _) = TypeAnnotator::visit_unit(&index, &unit);
+    
+    let if_a_or_b = &unit.implementations[0].statements[0];
+
+    // THEN all parts of the expression should be annotated with BOOL
+    if let AstStatement::IfStatement{ blocks: conditions, ..} = if_a_or_b{
+        assert_type_and_hint!(&annotations, &index, &conditions[0].condition, DINT_TYPE, None);
+    }else{
+        unreachable!("expected binary expression")
     }
 }

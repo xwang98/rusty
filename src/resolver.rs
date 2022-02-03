@@ -20,7 +20,7 @@ use crate::{
     typesystem::{
         self, get_bigger_type, DataTypeInformation, StringEncoding, BOOL_TYPE, BYTE_TYPE,
         DATE_AND_TIME_TYPE, DATE_TYPE, DINT_TYPE, DWORD_TYPE, LINT_TYPE, REAL_TYPE,
-        TIME_OF_DAY_TYPE, TIME_TYPE, VOID_TYPE, WORD_TYPE, U1_TYPE,
+        TIME_OF_DAY_TYPE, TIME_TYPE, U1_TYPE, VOID_TYPE, WORD_TYPE,
     },
 };
 
@@ -864,43 +864,48 @@ impl<'i> TypeAnnotator<'i> {
                 ..
             } => {
                 visit_all_statements!(self, ctx, left, right);
-                let statement_type = {
+                let (statement_type, hint) = {
                     let left_type = self.annotation_map.get_type_or_void(left, self.index);
                     let right_type = self.annotation_map.get_type_or_void(right, self.index);
 
                     if left_type.get_type_information().is_numerical()
                         && right_type.get_type_information().is_numerical()
                     {
-                        let dint = self.index.get_type_or_panic(DINT_TYPE);
-                        let bigger_type = get_bigger_type(
-                            get_bigger_type(left_type, right_type, self.index),
-                            dint,
+                        let bigger_type = get_bigger_type(left_type, right_type, self.index);
+                        let upscaled_type = get_bigger_type(
+                            bigger_type,
+                            self.index.get_type_or_panic(DINT_TYPE),
                             self.index,
                         );
 
-                        let target_name = if operator.is_bool_type() {
-                            BOOL_TYPE.to_string()
-                        } else {
-                            bigger_type.get_name().to_string()
+                        let target_name = upscaled_type.get_name().to_string();
+                        let hint_name = if bigger_type != upscaled_type {
+                            Some(bigger_type.get_name().to_string())
+                        } else{
+                            None
                         };
-
-                        let bigger_is_left = bigger_type != right_type;
-                        let bigger_is_right = bigger_type != left_type;
+                        let bigger_is_left = upscaled_type != right_type;
+                        let bigger_is_right = upscaled_type != left_type;
 
                         if bigger_is_left || bigger_is_right {
                             // if these types are different we need to update the 'other' type's annotation
-                            let bigger_type = bigger_type.clone(); // clone here, so we release the borrow on self
+                            let resulting_type = upscaled_type.clone(); // clone here, so we release the borrow on self
                             if bigger_is_right {
-                                self.update_expected_types(&bigger_type, left);
+                                self.update_expected_types(&resulting_type, left);
                             }
                             if bigger_is_left {
-                                self.update_expected_types(&bigger_type, right);
+                                self.update_expected_types(&resulting_type, right);
                             }
                         }
 
-                        Some(target_name)
+                        if operator.is_comparison_operator() {
+                            (Some(U1_TYPE.to_string()), None)
+                        }else{
+                            (Some(target_name), hint_name)
+                        }
+
                     } else if operator.is_bool_type() {
-                        Some(BOOL_TYPE.to_string())
+                        (Some(BOOL_TYPE.to_string()), None)
                     } else if left_type.get_type_information().is_pointer()
                         || right_type.get_type_information().is_pointer()
                     {
@@ -909,9 +914,9 @@ impl<'i> TypeAnnotator<'i> {
                         } else {
                             right_type.get_name()
                         };
-                        Some(target_name.to_string())
+                        (Some(target_name.to_string()), None)
                     } else {
-                        None
+                        (None, None)
                     }
                 };
 
@@ -919,6 +924,10 @@ impl<'i> TypeAnnotator<'i> {
                     self.annotation_map
                         .annotate(statement, StatementAnnotation::new_value(statement_type));
                 }
+                // if let Some(hint) = hint {
+                //     self.annotation_map
+                //         .annotate_type_hint(statement, StatementAnnotation::new_value(hint));
+                // }
             }
             AstStatement::UnaryExpression {
                 value, operator, ..
