@@ -371,3 +371,70 @@ fn pointer_arithmetics_function_call() {
     );
     insta::assert_snapshot!(result);
 }
+
+#[test]
+fn nested_function_call_parameters() {
+    // GIVEN a call statement where parameters are again call statements
+    let result = codegen(
+        "
+        FUNCTION foo : INT
+        END_FUNCTION
+
+        FUNCTION baz : INT
+            VAR_INPUT
+                a,b : INT;
+            END_VAR
+        END_FUNCTION
+        
+        PROGRAM main
+            baz( a := foo(), b := 3);
+		END_PROGRAM
+		",
+    );
+    insta::assert_snapshot!(result);
+}
+
+#[test]
+fn simple_not_expression_on_bools() {
+    // GIVEN a simple bool-expressions with NOT in it
+    let result = codegen(
+        "
+        PROGRAM main
+            VAR a : BOOL; END_VAR
+            NOT(a);
+		END_PROGRAM
+		",
+    );
+    insta::assert_snapshot!(result);
+}
+
+#[test]
+fn not_of_or_expression_on_bools() {
+    // GIVEN a simple bool-expressions with NOT in it
+    let result = codegen(
+        "
+        PROGRAM main
+            VAR a,b : BOOL; END_VAR
+            NOT(a OR b);
+		END_PROGRAM
+		",
+    );
+    insta::assert_snapshot!(result);
+}
+
+#[test]
+fn not_of_complex_expression_on_bools() {
+    // GIVEN a simple bool-expressions with NOT in it
+    let result = codegen(
+        "
+        PROGRAM main
+            VAR a,b,c : BOOL; END_VAR
+            NOT(a OR b) AND c;
+		END_PROGRAM
+		",
+    );
+    //THEN we dont want an icmp statement between i1 and i32
+    //%12 = icmp ne i1 %tmpVar, i32 0
+    //.                         ^^^
+    insta::assert_snapshot!(result);
+}

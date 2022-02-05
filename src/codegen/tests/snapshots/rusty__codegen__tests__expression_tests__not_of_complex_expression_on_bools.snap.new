@@ -1,0 +1,45 @@
+---
+source: src/codegen/tests/expression_tests.rs
+assertion_line: 436
+expression: result
+
+---
+; ModuleID = 'main'
+source_filename = "main"
+
+%main_interface = type { i8, i8, i8 }
+
+@main_instance = global %main_interface zeroinitializer
+
+define void @main(%main_interface* %0) {
+entry:
+  %a = getelementptr inbounds %main_interface, %main_interface* %0, i32 0, i32 0
+  %b = getelementptr inbounds %main_interface, %main_interface* %0, i32 0, i32 1
+  %c = getelementptr inbounds %main_interface, %main_interface* %0, i32 0, i32 2
+  %load_a = load i8, i8* %a, align 1
+  %1 = zext i8 %load_a to i32
+  %2 = icmp ne i32 %1, 0
+  br i1 %2, label %9, label %7
+
+3:                                                ; preds = %9
+  %load_c = load i8, i8* %c, align 1
+  %4 = zext i8 %load_c to i32
+  br label %5
+
+5:                                                ; preds = %3, %9
+  %6 = phi i32 [ %tmpVarYY, %9 ], [ %4, %3 ]
+  ret void
+
+7:                                                ; preds = %entry
+  %load_b = load i8, i8* %b, align 1
+  %8 = zext i8 %load_b to i32
+  br label %9
+
+9:                                                ; preds = %7, %entry
+  %10 = phi i32 [ %1, %entry ], [ %8, %7 ]
+  %11 = icmp ne i32 %10, 0
+  %tmpVarYY = xor i1 %11, true
+  %12 = icmp ne i1 %tmpVarYY, i32 0
+  br i1 %12, label %3, label %5
+}
+

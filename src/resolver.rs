@@ -934,15 +934,15 @@ impl<'i> TypeAnnotator<'i> {
             } => {
                 self.visit_statement(ctx, value);
 
-                let statement_type = if operator == &Operator::Minus {
+                let (statement_type, statement_hint) = if operator == &Operator::Minus {
                     let inner_type = self
                         .annotation_map
                         .get_type_or_void(value, self.index)
                         .get_type_information();
 
                     //keep the same type but switch to signed
-                    typesystem::get_signed_type(inner_type, self.index)
-                        .map(|it| it.get_name().to_string())
+                    (typesystem::get_signed_type(inner_type, self.index)
+                        .map(|it| it.get_name().to_string()), None)
                 } else {
                     let inner_type = self
                         .annotation_map
@@ -953,18 +953,25 @@ impl<'i> TypeAnnotator<'i> {
 
                     if operator == &Operator::Address {
                         //this becomes a pointer to the given type:
-                        Some(add_pointer_type(
+                        (Some(add_pointer_type(
                             &mut self.annotation_map.new_index,
                             inner_type,
-                        ))
+                        )), None)
                     } else {
-                        Some(inner_type)
+                        let inner_hint = self.annotation_map.get_type_hint(value, self.index)
+                            .map(|it| it.get_type_information().get_name().to_string());
+                        (Some(inner_type), inner_hint)
                     }
                 };
 
                 if let Some(statement_type) = statement_type {
                     self.annotation_map
                         .annotate(statement, StatementAnnotation::new_value(statement_type));
+                }
+
+                if let Some(hint_type) = statement_hint {
+                    self.annotation_map
+                        .annotate_type_hint(statement, StatementAnnotation::new_value(hint_type));
                 }
             }
             AstStatement::Reference { name, .. } => {

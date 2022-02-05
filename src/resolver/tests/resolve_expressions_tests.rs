@@ -2993,7 +2993,36 @@ fn bool_expressions_annotation() {
     }else{
         unreachable!("expected binary expression")
     }
-} 
+}
+
+#[test]
+fn complex_bool_expressions_annotation() {
+    //GIVEN
+    let (unit, index) = index(
+        "
+        PROGRAM PRG
+		VAR
+			a,b,c : BOOL;
+		END_VAR
+            NOT(a OR b) AND c;
+        END_PROGRAM
+        ",
+    );
+
+    //WHEN the AST is annotated
+    let (annotations, _) = TypeAnnotator::visit_unit(&index, &unit);
+    
+    let not_a_or_b_and_c = &unit.implementations[0].statements[0];
+
+    // THEN all parts of the expression should be annotated with BOOL
+    assert_type_and_hint!(&annotations, &index, not_a_or_b_and_c, DINT_TYPE, None);
+    if let AstStatement::BinaryExpression{ left: not_expr, right:  c, ..} = not_a_or_b_and_c {
+        assert_type_and_hint!(&annotations, &index, not_expr, DINT_TYPE, None );
+        assert_type_and_hint!(&annotations, &index, c, BOOL_TYPE, Some(DINT_TYPE));
+    }else{
+        unreachable!("expected binary expression")
+    }
+}
 
 #[test]
 fn compare_expression_annotation() {

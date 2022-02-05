@@ -1,0 +1,46 @@
+---
+source: src/codegen/tests/expression_tests.rs
+assertion_line: 394
+expression: result
+
+---
+; ModuleID = 'main'
+source_filename = "main"
+
+%main_interface = type {}
+%foo_interface = type {}
+%baz_interface = type { i16, i16 }
+
+@main_instance = global %main_interface zeroinitializer
+
+define i16 @foo(%foo_interface* %0) {
+entry:
+  %foo = alloca i16, align 2
+  store i16 0, i16* %foo, align 2
+  %foo_ret = load i16, i16* %foo, align 2
+  ret i16 %foo_ret
+}
+
+define i16 @baz(%baz_interface* %0) {
+entry:
+  %a = getelementptr inbounds %baz_interface, %baz_interface* %0, i32 0, i32 0
+  %b = getelementptr inbounds %baz_interface, %baz_interface* %0, i32 0, i32 1
+  %baz = alloca i16, align 2
+  store i16 0, i16* %baz, align 2
+  %baz_ret = load i16, i16* %baz, align 2
+  ret i16 %baz_ret
+}
+
+define void @main(%main_interface* %0) {
+entry:
+  %baz_instance = alloca %baz_interface, align 8
+  %1 = getelementptr inbounds %baz_interface, %baz_interface* %baz_instance, i32 0, i32 0
+  %foo_instance = alloca %foo_interface, align 8
+  %call = call i16 @foo(%foo_interface* %foo_instance)
+  store i16 %call, i16* %1, align 2
+  %2 = getelementptr inbounds %baz_interface, %baz_interface* %baz_instance, i32 0, i32 1
+  store i16 3, i16* %2, align 2
+  %call1 = call i16 @baz(%baz_interface* %baz_instance)
+  ret void
+}
+
