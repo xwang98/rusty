@@ -21,10 +21,9 @@ condition_check:                                  ; preds = %increment, %entry
   %load_x = load i32, i32* %x, align 4
   %load_x1 = load i32, i32* %x, align 4
   %tmpVar = icmp sle i32 %load_x1, 10
-  %1 = icmp ne i1 %tmpVar, false
-  br i1 %1, label %6, label %7
+  br i1 %tmpVar, label %4, label %5
 
-for_body:                                         ; preds = %4
+for_body:                                         ; preds = %2
   %load_x8 = load i32, i32* %x, align 4
   %tmpVar9 = add i32 %load_x8, 1
   store i32 %tmpVar9, i32* %x, align 4
@@ -41,36 +40,34 @@ increment:                                        ; preds = %buffer_block, %for_
   store i32 %tmpVar12, i32* %x, align 4
   br label %condition_check
 
-continue:                                         ; preds = %4
+continue:                                         ; preds = %2
   ret void
 
-2:                                                ; preds = %7
+1:                                                ; preds = %5
   %load_x4 = load i32, i32* %x, align 4
   %tmpVar5 = icmp sge i32 %load_x4, 10
-  %3 = icmp ne i1 %tmpVar5, false
-  br i1 %3, label %10, label %11
+  br i1 %tmpVar5, label %7, label %8
 
-4:                                                ; preds = %11, %7
-  %5 = phi i1 [ %8, %7 ], [ %12, %11 ]
-  br i1 %5, label %for_body, label %continue
+2:                                                ; preds = %8, %5
+  %3 = phi i1 [ %6, %5 ], [ %9, %8 ]
+  br i1 %3, label %for_body, label %continue
 
-6:                                                ; preds = %condition_check
+4:                                                ; preds = %condition_check
   %load_x2 = load i32, i32* %x, align 4
   %tmpVar3 = icmp sge i32 %load_x2, 3
-  br label %7
+  br label %5
 
-7:                                                ; preds = %6, %condition_check
-  %8 = phi i1 [ %tmpVar, %condition_check ], [ %tmpVar3, %6 ]
-  %9 = icmp ne i1 %8, false
-  br i1 %9, label %4, label %2
+5:                                                ; preds = %4, %condition_check
+  %6 = phi i1 [ %tmpVar, %condition_check ], [ %tmpVar3, %4 ]
+  br i1 %6, label %2, label %1
 
-10:                                               ; preds = %2
+7:                                                ; preds = %1
   %load_x6 = load i32, i32* %x, align 4
   %tmpVar7 = icmp sle i32 %load_x6, 3
-  br label %11
+  br label %8
 
-11:                                               ; preds = %10, %2
-  %12 = phi i1 [ %tmpVar5, %2 ], [ %tmpVar7, %10 ]
-  br label %4
+8:                                                ; preds = %7, %1
+  %9 = phi i1 [ %tmpVar5, %1 ], [ %tmpVar7, %7 ]
+  br label %2
 }
 

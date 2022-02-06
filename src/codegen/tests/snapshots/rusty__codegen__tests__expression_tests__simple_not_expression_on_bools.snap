@@ -7,17 +7,16 @@ expression: result
 ; ModuleID = 'main'
 source_filename = "main"
 
-%main_interface = type { i8, i8 }
+%main_interface = type { i8 }
 
 @main_instance = global %main_interface zeroinitializer
 
 define void @main(%main_interface* %0) {
 entry:
   %a = getelementptr inbounds %main_interface, %main_interface* %0, i32 0, i32 0
-  %b = getelementptr inbounds %main_interface, %main_interface* %0, i32 0, i32 1
   %load_a = load i8, i8* %a, align 1
   %1 = icmp ne i8 %load_a, 0
-  %tmpVarYY = xor i1 %1, true
+  %tmpVar = xor i1 %1, true
   ret void
 }
 

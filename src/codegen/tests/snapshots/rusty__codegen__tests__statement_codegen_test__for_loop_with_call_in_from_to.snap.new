@@ -1,0 +1,88 @@
+---
+source: src/codegen/tests/statement_codegen_test.rs
+assertion_line: 181
+expression: result
+
+---
+; ModuleID = 'main'
+source_filename = "main"
+
+%foo_interface = type { i16 }
+%test_interface = type { i16 }
+
+define i16 @foo(%foo_interface* %0) {
+entry:
+  %a = getelementptr inbounds %foo_interface, %foo_interface* %0, i32 0, i32 0
+  %foo = alloca i16, align 2
+  store i16 0, i16* %foo, align 2
+  %foo_ret = load i16, i16* %foo, align 2
+  ret i16 %foo_ret
+}
+
+define i8 @test(%test_interface* %0) {
+entry:
+  %i = getelementptr inbounds %test_interface, %test_interface* %0, i32 0, i32 0
+  %test = alloca i8, align 1
+  store i16 0, i16* %i, align 2
+  store i8 0, i8* %test, align 1
+  %foo_instance = alloca %foo_interface, align 8
+  %1 = getelementptr inbounds %foo_interface, %foo_interface* %foo_instance, i32 0, i32 0
+  store i16 1, i16* %1, align 2
+  %call = call i16 @foo(%foo_interface* %foo_instance)
+  store i16 %call, i16* %i, align 2
+  br label %condition_check
+
+condition_check:                                  ; preds = %increment, %entry
+  %load_i = load i16, i16* %i, align 2
+  %load_i1 = load i16, i16* %i, align 2
+  %tmpVar = icmp sle i16 %load_i1, 2
+  br i1 %tmpVar, label %6, label %3
+  %load_i2 = load i16, i16* %i, align 2
+  %foo_instance3 = alloca %foo_interface, align 8
+  %2 = getelementptr inbounds %foo_interface, %foo_interface* %foo_instance3, i32 0, i32 0
+  store i16 1, i16* %2, align 2
+  %call4 = call i16 @foo(%foo_interface* %foo_instance3)
+  %tmpVar5 = icmp sge i16 %load_i2, %call4
+
+for_body:                                         ; preds = %7
+  br label %increment
+
+increment:                                        ; preds = %for_body
+  %tmpVar12 = add i16 %load_i, 1
+  store i16 %tmpVar12, i16* %i, align 2
+  br label %condition_check
+
+continue:                                         ; preds = %7
+  %test_ret = load i8, i8* %test, align 1
+  ret i8 %test_ret
+
+3:                                                ; preds = %6, %condition_check
+  %4 = phi i1 [ %tmpVar, %condition_check ], [ %tmpVar5, %6 ]
+  br i1 %4, label %7, label %9
+  %load_i6 = load i16, i16* %i, align 2
+  %tmpVar7 = icmp sge i16 %load_i6, 2
+  br i1 %tmpVar7, label %12, label %10
+  %load_i8 = load i16, i16* %i, align 2
+  %foo_instance9 = alloca %foo_interface, align 8
+  %5 = getelementptr inbounds %foo_interface, %foo_interface* %foo_instance9, i32 0, i32 0
+  store i16 1, i16* %5, align 2
+  %call10 = call i16 @foo(%foo_interface* %foo_instance9)
+  %tmpVar11 = icmp sle i16 %load_i8, %call10
+
+6:                                                ; preds = %condition_check
+  br label %3
+
+7:                                                ; preds = %9, %3
+  %8 = phi i1 [ %4, %3 ], [ %11, %9 ]
+  br i1 %8, label %for_body, label %continue
+
+9:                                                ; preds = %3
+  br label %7
+
+10:                                               ; preds = %12, %3
+  %11 = phi i1 [ %tmpVar7, %3 ], [ %tmpVar11, %12 ]
+
+12:                                               ; preds = %3
+  br label %10
+}
+

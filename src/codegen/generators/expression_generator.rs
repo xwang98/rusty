@@ -190,7 +190,7 @@ impl<'a, 'b> ExpressionCodeGenerator<'a, 'b> {
                 operator,
                 ..
             } => {
-                //If OR, or AND handle before generating the statements
+                // /If OR, or AND handle before generating the statements
                 if let Operator::And | Operator::Or = operator {
                     return self.generate_short_circuit_boolean_expression(operator, left, right);
                 }
@@ -363,11 +363,11 @@ impl<'a, 'b> ExpressionCodeGenerator<'a, 'b> {
                         .builder
                         .build_not(
                             ne_zero,
-                            "tmpVarYY",
+                            "tmpVar",
                         )
                         .as_basic_value_enum())
                 }else{
-                    Ok(self.llvm.builder.build_not(lhs, "tmpVarXX").as_basic_value_enum())
+                    Ok(self.llvm.builder.build_not(lhs, "tmpVar").as_basic_value_enum())
                 }
             },
             Operator::Minus => {
@@ -1836,6 +1836,23 @@ impl<'a, 'b> ExpressionCodeGenerator<'a, 'b> {
         Ok(array_value.as_basic_value_enum())
     }
 
+    /// ensures that the given expr is of type i1, if it is bigger than i1
+    /// this operations performs a `expr != 0` expression and returns the i1-result.
+    /// If `expr` is already of type `i1` this operation returns `expr` as is.
+    pub fn to_i1(&self, expr: IntValue<'a>) -> IntValue<'a> {
+        let expr_type = expr.get_type();
+        if expr_type.get_bit_width()  > 1 {
+            self.llvm.builder.build_int_compare(
+                IntPredicate::NE,
+                expr,
+                expr_type.const_zero(),
+                "",
+            )
+        }else{
+            expr
+        }
+    }
+
     /// generates a phi-expression (&& or || expression) with respect to short-circuit evaluation
     ///
     /// - `operator` AND or OR
@@ -1850,24 +1867,15 @@ impl<'a, 'b> ExpressionCodeGenerator<'a, 'b> {
         let builder = &self.llvm.builder;
         let function = self.get_function_context(left)?.function;
 
-        let right_branch = self.llvm.context.append_basic_block(function, "");
-        let continue_branch = self.llvm.context.append_basic_block(function, "");
 
-        let left_type = self.get_type_hint_for(left)?;
-        let left_value = self.generate_expression(left)?;
+        let left_value = self.to_i1(self.generate_expression(left)?.into_int_value());
 
         let final_left_block = builder.get_insert_block().expect(INTERNAL_LLVM_ERROR);
-        let left_llvm_type = self.llvm_index.get_associated_type(left_type.get_name())?;
-        //Compare left to 0
-        let lhs = builder.build_int_compare(
-            IntPredicate::NE,
-            left_value.into_int_value(),
-            left_llvm_type.into_int_type().const_int(0, false),
-            "",
-        );
+        let continue_branch = self.llvm.context.append_basic_block(function, "");
+        let right_branch = self.llvm.context.append_basic_block(function, "");
         match operator {
-            Operator::Or => builder.build_conditional_branch(lhs, continue_branch, right_branch),
-            Operator::And => builder.build_conditional_branch(lhs, right_branch, continue_branch),
+            Operator::Or => builder.build_conditional_branch(left_value, continue_branch, right_branch),
+            Operator::And => builder.build_conditional_branch(left_value, right_branch, continue_branch),
             _ => {
                 return Err(Diagnostic::codegen_error(
                     &format!("Cannot generate phi-expression for operator {:}", operator),
@@ -1877,30 +1885,16 @@ impl<'a, 'b> ExpressionCodeGenerator<'a, 'b> {
         };
 
         builder.position_at_end(right_branch);
-        let (right_type, right_value) = (
-            self.get_type_hint_for(right)?,
-            self.generate_expression(right)?,
-        );
+        let right_value = self.to_i1(self.generate_expression(right)?.into_int_value());
         let final_right_block = builder.get_insert_block().expect(INTERNAL_LLVM_ERROR);
-        let rhs = right_value;
         builder.build_unconditional_branch(continue_branch);
 
         builder.position_at_end(continue_branch);
         //Generate phi
-        let target_type = if left_type.get_type_information().get_size()
-            > right_type.get_type_information().get_size()
-        {
-            left_type
-        } else {
-            right_type
-        };
-        let llvm_target_type = self
-            .llvm_index
-            .get_associated_type(target_type.get_name())?;
-        let phi_value = builder.build_phi(llvm_target_type, "");
+        let phi_value = builder.build_phi(left_value.get_type(), "");
         phi_value.add_incoming(&[
-            (&left_value.into_int_value(), final_left_block),
-            (&rhs, final_right_block),
+            (&left_value, final_left_block),
+            (&right_value, final_right_block),
         ]);
 
         Ok(phi_value.as_basic_value())

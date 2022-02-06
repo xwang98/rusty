@@ -1,0 +1,38 @@
+---
+source: src/codegen/tests/code_gen_tests.rs
+assertion_line: 681
+expression: result
+
+---
+; ModuleID = 'main'
+source_filename = "main"
+
+%prg_interface = type { i8, i8 }
+
+@prg_instance = global %prg_interface zeroinitializer
+
+define void @prg(%prg_interface* %0) {
+entry:
+  %x = getelementptr inbounds %prg_interface, %prg_interface* %0, i32 0, i32 0
+  %y = getelementptr inbounds %prg_interface, %prg_interface* %0, i32 0, i32 1
+  %load_x = load i8, i8* %x, align 1
+  %1 = icmp ne i8 %load_x, 0
+  %tmpVar = xor i1 %1, true
+  %load_x1 = load i8, i8* %x, align 1
+  %2 = zext i8 %load_x1 to i32
+  %3 = icmp ne i32 %2, 0
+  br i1 %3, label %7, label %8
+  %load_y = load i8, i8* %y, align 1
+  %4 = icmp ne i8 %load_y, 0
+  %tmpVar2 = xor i1 %4, true
+  %5 = zext i1 %tmpVar2 to i32
+  %6 = icmp ne i32 %5, 0
+
+7:                                                ; preds = %entry
+  br label %8
+
+8:                                                ; preds = %7, %entry
+  %9 = phi i1 [ %3, %entry ], [ %6, %7 ]
+  ret void
+}
+

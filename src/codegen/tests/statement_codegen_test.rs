@@ -154,3 +154,55 @@ fn function_result_assignment_on_aliased_string() {
 
     insta::assert_snapshot!(result);
 }
+
+#[test]
+fn for_loop_with_call_in_from_to() {
+    //GIVEN a for loop with a method-call in its from-to part
+    let result = codegen(
+        r#"
+        FUNCTION foo : INT 
+            VAR_INPUT
+                a : INT;
+            END_VAR
+        END_FUNCTION
+
+        FUNCTION test : BOOL
+        VAR i : INT; END_VAR
+
+        FOR i := foo(1) TO 2 DO
+        END_FOR
+
+        END_FUNCTION
+        "#,
+    );
+
+    // WHEN we generate
+    //THEN we dont want dead code due to wrong branching in the for-loop
+    insta::assert_snapshot!(result);
+}
+
+#[test]
+fn for_loop_with_add_in_from_to() {
+    //GIVEN a for loop with a method-call in its from-to part
+    let result = codegen(
+        r#"
+        FUNCTION foo : INT 
+            VAR_INPUT
+                a : INT;
+            END_VAR
+        END_FUNCTION
+
+        FUNCTION test : BOOL
+        VAR i : INT; END_VAR
+
+        FOR i := 1+1 TO 3 DO
+        END_FOR
+
+        END_FUNCTION
+        "#,
+    );
+
+    // WHEN we generate
+    //THEN we dont want dead code due to wrong branching in the for-loop
+    insta::assert_snapshot!(result);
+}

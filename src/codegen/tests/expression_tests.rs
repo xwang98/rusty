@@ -438,3 +438,35 @@ fn not_of_complex_expression_on_bools() {
     //.                         ^^^
     insta::assert_snapshot!(result);
 }
+
+#[test]
+fn short_curcuit_or_2() {
+    // GIVEN an or expression
+    let result = codegen(
+        "
+        PROGRAM main
+            VAR a,b,c : BOOL; END_VAR
+            c := a OR b;
+		END_PROGRAM
+		",
+    );
+    insta::assert_snapshot!(result);
+}
+
+
+#[test]
+fn short_curcuit_or_3() {
+    // GIVEN an or expression
+    let result = codegen(
+        "
+        PROGRAM main
+            VAR a,b : BOOL; END_VAR
+
+            a AND b = 0;
+		END_PROGRAM
+		",
+    );
+    insta::assert_snapshot!(result);
+}
+
+

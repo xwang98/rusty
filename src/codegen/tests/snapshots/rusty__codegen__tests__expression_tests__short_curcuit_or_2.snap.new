@@ -1,0 +1,36 @@
+---
+source: src/codegen/tests/expression_tests.rs
+assertion_line: 453
+expression: result
+
+---
+; ModuleID = 'main'
+source_filename = "main"
+
+%main_interface = type { i8, i8, i8 }
+
+@main_instance = global %main_interface zeroinitializer
+
+define void @main(%main_interface* %0) {
+entry:
+  %a = getelementptr inbounds %main_interface, %main_interface* %0, i32 0, i32 0
+  %b = getelementptr inbounds %main_interface, %main_interface* %0, i32 0, i32 1
+  %c = getelementptr inbounds %main_interface, %main_interface* %0, i32 0, i32 2
+  %load_a = load i8, i8* %a, align 1
+  %1 = zext i8 %load_a to i32
+  %2 = icmp ne i32 %1, 0
+  br i1 %2, label %3, label %6
+
+3:                                                ; preds = %6, %entry
+  %4 = phi i1 [ %2, %entry ], [ %8, %6 ]
+  %5 = sext i1 %4 to i8
+  store i8 %5, i8* %c, align 1
+  ret void
+
+6:                                                ; preds = %entry
+  %load_b = load i8, i8* %b, align 1
+  %7 = zext i8 %load_b to i32
+  %8 = icmp ne i32 %7, 0
+  br label %3
+}
+

@@ -137,7 +137,8 @@ pub fn cast_if_needed<'ctx>(
             ..
         } => {
             match value_type {
-                DataTypeInformation::Integer { size: rsize, .. } => {
+                DataTypeInformation::Integer { .. } => {
+                    let rsize = &value.get_type().into_int_type().get_bit_width();
                     if lsize < rsize {
                         //Truncate
                         Ok(llvm
