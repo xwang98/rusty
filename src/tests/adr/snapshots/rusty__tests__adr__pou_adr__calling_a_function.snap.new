@@ -1,0 +1,43 @@
+---
+source: src/tests/adr/pou_adr.rs
+assertion_line: 169
+expression: codegen(calling_prg.as_str())
+
+---
+; ModuleID = 'main'
+source_filename = "main"
+
+%prg_interface = type { i16, i16 }
+%main_fun_interface = type { i16, i16*, i16 }
+
+@prg_instance = global %prg_interface zeroinitializer
+
+define void @prg(%prg_interface* %0) {
+entry:
+  %x = getelementptr inbounds %prg_interface, %prg_interface* %0, i32 0, i32 0
+  %z = getelementptr inbounds %prg_interface, %prg_interface* %0, i32 0, i32 1
+  %main_fun_instance = alloca %main_fun_interface, align 8
+  %1 = getelementptr inbounds %main_fun_interface, %main_fun_interface* %main_fun_instance, i32 0, i32 0
+  %load_x = load i16, i16* %x, align 2
+  store i16 %load_x, i16* %1, align 2
+  %2 = getelementptr inbounds %main_fun_interface, %main_fun_interface* %main_fun_instance, i32 0, i32 1
+  %load_z = load i16, i16* %z, align 2
+  store i16 %load_z, i16** %2, align 2
+  %call = call i16 @main_fun(%main_fun_interface* %main_fun_instance)
+  ret void
+}
+
+define i16 @main_fun(%main_fun_interface* %0) {
+entry:
+  %i = getelementptr inbounds %main_fun_interface, %main_fun_interface* %0, i32 0, i32 0
+  %io = getelementptr inbounds %main_fun_interface, %main_fun_interface* %0, i32 0, i32 1
+  %v = getelementptr inbounds %main_fun_interface, %main_fun_interface* %0, i32 0, i32 2
+  %vt = alloca i16, align 2
+  %main_fun = alloca i16, align 2
+  store i16 1, i16* %v, align 2
+  store i16 2, i16* %vt, align 2
+  store i16 0, i16* %main_fun, align 2
+  %main_fun_ret = load i16, i16* %main_fun, align 2
+  ret i16 %main_fun_ret
+}
+

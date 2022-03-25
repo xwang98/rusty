@@ -235,8 +235,8 @@ impl VariableIndexEntry {
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum VariableType {
-    Local,
-    Temp,
+    Local,   //functions: -, _ VAR
+    Temp,   // functions: VAR & VAR_TEMP, _: VAR_TEMP
     Input,
     Output,
     InOut,

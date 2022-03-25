@@ -56,10 +56,11 @@ mod linker;
 mod parser;
 mod resolver;
 mod test_utils;
+
 mod typesystem;
 mod validation;
-
 pub mod runner;
+
 
 #[macro_use]
 #[cfg(test)]
@@ -707,7 +708,8 @@ pub fn link(
 mod tests {
     mod external_files;
     mod multi_files;
-
+    mod adr;
+    
     use inkwell::targets::TargetMachine;
 
     use crate::{create_source_code, get_target_triple};

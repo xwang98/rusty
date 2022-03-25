@@ -1,0 +1,17 @@
+---
+source: src/codegen/tests/initialization_test/pou_initializers.rs
+assertion_line: 98
+expression: result
+
+---
+; ModuleID = 'main'
+source_filename = "main"
+
+define i16 @func() {
+entry:
+  %func = alloca i16, align 2
+  store i16 0, i16* %func, align 2
+  %func_ret = load i16, i16* %func, align 2
+  ret i16 %func_ret
+}
+
