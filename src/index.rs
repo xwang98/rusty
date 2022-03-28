@@ -30,7 +30,7 @@ pub struct VariableIndexEntry {
     /// an optional initial value of this variable
     pub initial_value: Option<ConstId>,
     /// the type of variable
-    pub variable_type: VariableType,
+    pub variable_type: DeclarationType,
     /// true if this variable is a compile-time-constant
     is_constant: bool,
     /// the variable's datatype
@@ -92,7 +92,7 @@ impl HardwareBinding {
 pub struct MemberInfo<'b> {
     container_name: &'b str,
     variable_name: &'b str,
-    variable_linkage: VariableType,
+    variable_linkage: DeclarationType,
     variable_type_name: &'b str,
     binding: Option<HardwareBinding>,
     is_constant: bool,
@@ -103,7 +103,7 @@ impl VariableIndexEntry {
         name: &str,
         qualified_name: &str,
         data_type_name: &str,
-        variable_type: VariableType,
+        variable_type: DeclarationType,
         location_in_parent: u32,
         source_location: SourceRange,
     ) -> Self {
@@ -131,7 +131,7 @@ impl VariableIndexEntry {
             name: name.to_string(),
             qualified_name: qualified_name.to_string(),
             initial_value: None,
-            variable_type: VariableType::Global,
+            variable_type: DeclarationType::ByVal(VariableType::Global),
             is_constant: false,
             data_type_name: data_type_name.to_string(),
             location_in_parent: 0,
@@ -194,14 +194,14 @@ impl VariableIndexEntry {
     }
 
     pub fn is_return(&self) -> bool {
-        self.variable_type == VariableType::Return
+        self.get_variable_type() == VariableType::Return
     }
 
     pub fn is_local(&self) -> bool {
-        self.variable_type == VariableType::Local
+        self.get_variable_type() == VariableType::Local
     }
     pub fn is_temp(&self) -> bool {
-        self.variable_type == VariableType::Temp
+        self.get_variable_type() == VariableType::Temp
     }
 
     pub fn is_constant(&self) -> bool {
@@ -213,6 +213,10 @@ impl VariableIndexEntry {
     }
 
     pub fn get_variable_type(&self) -> VariableType {
+        self.variable_type.get_variable_type()
+    }
+
+    pub fn get_declaration_type(&self) -> DeclarationType {
         self.variable_type
     }
 
@@ -225,13 +229,28 @@ impl VariableIndexEntry {
     }
 
     pub(crate) fn is_parameter(&self) -> bool {
-        let vt = self.get_variable_type();
         matches!(
-            vt,
+            self.get_variable_type(),
             VariableType::Input | VariableType::Output | VariableType::InOut
         )
     }
 }
+
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub enum DeclarationType {
+    ByVal(VariableType),
+    ByRef(VariableType)
+}
+
+impl DeclarationType {
+    pub fn get_variable_type(&self) -> VariableType {
+        match self {
+            DeclarationType::ByVal(t) => *t,
+            DeclarationType::ByRef(t) => *t,
+        }
+    }
+}
+
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum VariableType {
@@ -662,9 +681,9 @@ impl Index {
             .and_then(|map| {
                 map.values()
                     .filter(|item| {
-                        item.variable_type == VariableType::Input
-                            || item.variable_type == VariableType::InOut
-                            || item.variable_type == VariableType::Output
+                        item.get_variable_type() == VariableType::Input
+                            || item.get_variable_type() == VariableType::InOut
+                            || item.get_variable_type() == VariableType::Output
                     })
                     .find(|item| item.location_in_parent == index)
             })
@@ -676,7 +695,7 @@ impl Index {
             .get(&pou_name.to_lowercase())
             .and_then(|map| {
                 map.values()
-                    .filter(|item| item.variable_type == VariableType::Input)
+                    .filter(|item| item.get_variable_type() == VariableType::Input)
                     .find(|item| item.location_in_parent == index)
             })
     }
@@ -738,7 +757,7 @@ impl Index {
         let members = self.member_variables.get(&pou_name.to_lowercase()); //.ok_or_else(||Diagnostic::unknown_type(pou_name, 0..0))?;
         if let Some(members) = members {
             for (_, variable) in members {
-                if variable.variable_type == VariableType::Return {
+                if variable.get_variable_type() == VariableType::Return {
                     return Some(variable);
                 }
             }

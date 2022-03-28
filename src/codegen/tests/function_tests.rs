@@ -15,5 +15,5 @@ fn member_variables_in_body() {
         "#
     );
 
-    insta::assert_debug_snapshot!(result,@"");
+    insta::assert_snapshot!(result, @"");
 }

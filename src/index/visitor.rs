@@ -5,7 +5,7 @@ use crate::ast::{
     PouType, SourceRange, TypeNature, UserTypeDeclaration, VariableBlock, VariableBlockType,
 };
 use crate::diagnostics::Diagnostic;
-use crate::index::{Index, MemberInfo};
+use crate::index::{DeclarationType, Index, MemberInfo};
 use crate::lexer::IdProvider;
 use crate::typesystem::{self, *};
 
@@ -48,7 +48,12 @@ pub fn visit_pou(index: &mut Index, pou: &Pou) {
     let mut count = 0;
     let mut varargs = None;
     for block in &pou.variable_blocks {
-        let block_type = get_variable_type_from_block(block);
+        let block_type = if pou.pou_type == PouType::Function {
+            DeclarationType::ByRef(get_variable_type_from_block(block))
+        } else {
+            DeclarationType::ByVal(get_variable_type_from_block(block))
+        };
+
         for var in &block.variables {
             if let DataTypeDeclaration::DataTypeDefinition {
                 data_type: ast::DataType::VarArgs { referenced_type },
@@ -66,7 +71,7 @@ pub fn visit_pou(index: &mut Index, pou: &Pou) {
             member_names.push(var.name.clone());
 
             let var_type_name = var.data_type.get_name().expect("named datatype");
-            let type_name = if block_type == VariableType::InOut {
+            let type_name = if block_type.get_variable_type() == VariableType::InOut {
                 //register a pointer type for the var_in_out
                 register_inout_pointer_type_for(index, var_type_name)
             } else {
@@ -110,7 +115,7 @@ pub fn visit_pou(index: &mut Index, pou: &Pou) {
             MemberInfo {
                 container_name: &pou.name,
                 variable_name: pou.get_return_name(),
-                variable_linkage: VariableType::Return,
+                variable_linkage: DeclarationType::ByVal( VariableType::Return),
                 variable_type_name: return_type.get_name().unwrap_or_default(),
                 is_constant: false, //return variables are not constants
                 binding: None,
@@ -332,7 +337,7 @@ fn visit_data_type(
                     MemberInfo {
                         container_name: struct_name,
                         variable_name: &var.name,
-                        variable_linkage: VariableType::Local,
+                        variable_linkage: DeclarationType::ByVal(VariableType::Local),
                         variable_type_name: member_type,
                         is_constant: false, //struct members are not constants //TODO thats probably not true (you can define a struct in an CONST-block?!)
                         binding,

@@ -8,14 +8,13 @@ expression: codegen(calling_prg.as_str())
 source_filename = "main"
 
 %main_prg_interface = type { i16, i16*, i16, i16 }
-%foo_interface = type { i16, i16 }
 
 @main_prg_instance = global %main_prg_interface zeroinitializer
 
-define i16 @foo(%foo_interface* %0) {
+define i16 @foo() {
 entry:
-  %x = getelementptr inbounds %foo_interface, %foo_interface* %0, i32 0, i32 0
-  %y = getelementptr inbounds %foo_interface, %foo_interface* %0, i32 0, i32 1
+  %x = alloca i16, align 2
+  %y = alloca i16, align 2
   %foo = alloca i16, align 2
   store i16 0, i16* %x, align 2
   store i16 0, i16* %y, align 2

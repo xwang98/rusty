@@ -154,7 +154,7 @@ impl<'ink, 'cg> PouGenerator<'ink, 'cg> {
         //generate a function that takes a instance-struct parameter
         let pou_name = implementation.get_call_name();
 
-        let parameters = self.collect_paramters_for_implementation(implementation)?;
+        let parameters = self.create_paramters_for_implementation(implementation)?;
 
         let return_type = match global_index.find_return_type(implementation.get_type_name()) {
             Some(r_type) => Some(self.llvm_index.get_associated_type(r_type.get_name())?),
@@ -173,7 +173,10 @@ impl<'ink, 'cg> PouGenerator<'ink, 'cg> {
         Ok(curr_f)
     }
 
-    fn collect_paramters_for_implementation(
+    /// creates and returns all parameters for the given implementation
+    /// for functions, this method creates a full list of parameters, for other POUs
+    /// this method creates a single state-struct parameter
+    fn create_paramters_for_implementation(
         &self,
         implementation: &ImplementationIndexEntry,
     ) -> Result<Vec<BasicMetadataTypeEnum<'ink>>, Diagnostic> {
@@ -253,36 +256,31 @@ impl<'ink, 'cg> PouGenerator<'ink, 'cg> {
             param_index += 1;
         }
 
-        // generate loads for all the parameters
-        // let pou_members = if implementation.pou_type == PouType::Function {
-        //     // functions will only require stack allocated variables for VAR AND VAR_TEMP, no load statements at all
-        //     self.index.get_container_members(&implementation.type_name)
-        //         .into_iter().filter(|it| it.is_temp() || it.is_return()).collect::<Vec<_>>()
-        // } else {
-            // other pou's need stack variables and load-statements for all members
         let pou_members = self.index.get_container_members(&implementation.type_name);
-        // };
 
+        // generate local variables
         if implementation.pou_type == PouType::Function {
             for m in pou_members.iter() {
                 //Different names for retun variables
                 let parameter_name = m.get_name();
                 let temp_type = local_index.get_associated_type(m.get_type_name())?;
                 let variable = self.llvm.create_local_variable(parameter_name, &temp_type);
-                local_index.associate_loaded_local_variable(&implementation.type_name, parameter_name, variable)?;
+                local_index.associate_loaded_local_variable(
+                    &implementation.type_name,
+                    parameter_name,
+                    variable,
+                )?;
                 //Store the param value for parameters
             }
-
         } else {
-        self.generate_local_variable_accessors(
-            param_index,
-            &mut local_index,
-            &implementation.type_name,
-            current_function,
-            &pou_members,
-        )?;
+            self.generate_local_variable_accessors(
+                param_index,
+                &mut local_index,
+                &implementation.type_name,
+                current_function,
+                &pou_members,
+            )?;
         }
-
 
         let function_context = FunctionContext {
             linking_context: implementation.into(),
