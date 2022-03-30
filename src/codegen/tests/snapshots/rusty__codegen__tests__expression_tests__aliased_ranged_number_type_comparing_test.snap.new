@@ -9,19 +9,23 @@ source_filename = "main"
 
 define i16 @baz() {
 entry:
-  %x = alloca i16, align 2
-  %y = alloca i16, align 2
+  %x = alloca i16*, align 8
+  %y = alloca i16*, align 8
   %baz = alloca i16, align 2
-  store i16 0, i16* %x, align 2
-  store i16 0, i16* %y, align 2
+  store i16* null, i16** %x, align 8
+  store i16* null, i16** %y, align 8
   store i16 0, i16* %baz, align 2
-  %load_x = load i16, i16* %x, align 2
+  %deref = load i16*, i16** %x, align 8
+  %load_x = load i16, i16* %deref, align 2
   %tmpVar = icmp eq i16 %load_x, i32 3
-  %load_x1 = load i16, i16* %x, align 2
-  %load_y = load i16, i16* %y, align 2
-  %tmpVar2 = icmp slt i16 %load_x1, %load_y
-  %load_y3 = load i16, i16* %y, align 2
-  %tmpVar4 = icmp sle i16 %load_y3, i32 0
+  %deref1 = load i16*, i16** %x, align 8
+  %load_x2 = load i16, i16* %deref1, align 2
+  %deref3 = load i16*, i16** %y, align 8
+  %load_y = load i16, i16* %deref3, align 2
+  %tmpVar4 = icmp slt i16 %load_x2, %load_y
+  %deref5 = load i16*, i16** %y, align 8
+  %load_y6 = load i16, i16* %deref5, align 2
+  %tmpVar7 = icmp sle i16 %load_y6, i32 0
   %baz_ret = load i16, i16* %baz, align 2
   ret i16 %baz_ret
 }

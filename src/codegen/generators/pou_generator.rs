@@ -51,8 +51,7 @@ pub fn generate_implementation_stubs<'ink>(
     let mut llvm_index = LlvmTypedIndex::default();
     let pou_generator = PouGenerator::new(llvm, index, annotations, types_index);
     for (name, implementation) in index.get_implementations() {
-        let type_info = index.get_type_information_or_void(implementation.get_type_name());
-        if !type_info.is_generic() {
+        if !implementation.generic {
             let curr_f = pou_generator.generate_implementation_stub(implementation, module)?;
             llvm_index.associate_implementation(name, curr_f)?;
         }
@@ -246,7 +245,7 @@ impl<'ink, 'cg> PouGenerator<'ink, 'cg> {
         if let PouType::Method { .. } = implementation.pou_type {
             let class_name = implementation.type_name.split('.').collect::<Vec<&str>>()[0];
             let class_members = self.index.get_container_members(class_name);
-            self.generate_local_variable_accessors(
+            self.generate_local_struct_variable_accessors(
                 param_index,
                 &mut local_index,
                 class_name,
@@ -260,20 +259,26 @@ impl<'ink, 'cg> PouGenerator<'ink, 'cg> {
 
         // generate local variables
         if implementation.pou_type == PouType::Function {
-            for m in pou_members.iter() {
-                //Different names for retun variables
-                let parameter_name = m.get_name();
-                let temp_type = local_index.get_associated_type(m.get_type_name())?;
-                let variable = self.llvm.create_local_variable(parameter_name, &temp_type);
-                local_index.associate_loaded_local_variable(
-                    &implementation.type_name,
-                    parameter_name,
-                    variable,
-                )?;
-                //Store the param value for parameters
-            }
+            self.generate_local_function_arguments_accessors(
+                &mut local_index,
+                &implementation.type_name,
+                current_function,
+                &pou_members,
+            )?;
+            // for m in pou_members.iter() {
+            //     //Different names for retun variables
+            //     let parameter_name = m.get_name();
+            //     let temp_type = local_index.get_associated_type(m.get_type_name())?;
+            //     let variable = self.llvm.create_local_variable(parameter_name, &temp_type);
+            //     local_index.associate_loaded_local_variable(
+            //         &implementation.type_name,
+            //         parameter_name,
+            //         variable,
+            //     )?;
+            //     //Store the param value for parameters
+            // }
         } else {
-            self.generate_local_variable_accessors(
+            self.generate_local_struct_variable_accessors(
                 param_index,
                 &mut local_index,
                 &implementation.type_name,
@@ -352,10 +357,9 @@ impl<'ink, 'cg> PouGenerator<'ink, 'cg> {
         }
     }
 
-    /// generates a load-statement for the given member
-    fn generate_local_variable_accessors(
+    /// generates a load-statement for the given members of a function
+    fn generate_local_function_arguments_accessors(
         &self,
-        arg_index: u32,
         index: &mut LlvmTypedIndex<'ink>,
         type_name: &str,
         current_function: FunctionValue<'ink>,
@@ -373,7 +377,52 @@ impl<'ink, 'cg> PouGenerator<'ink, 'cg> {
                     Pou::calc_return_name(type_name),
                     self.llvm.create_local_variable(type_name, &return_type),
                 )
-            } else if m.is_temp() {
+            } else if m.is_parameter() {
+                let ptr_value = current_function
+                    .get_nth_param(var_count)
+                    .map(BasicValueEnum::into_pointer_value)
+                    .ok_or_else(|| Diagnostic::missing_function(m.source_location.clone()))?;
+
+                let ptr = self.llvm.create_local_variable(
+                    m.get_name(),
+                    &index.get_associated_type(m.get_type_name())?,
+                );
+                self.llvm.builder.build_store(ptr, ptr_value);
+
+                var_count += 1;
+
+                (parameter_name, ptr)
+            } else {
+                let temp_type = index.get_associated_type(m.get_type_name())?;
+                (
+                    parameter_name,
+                    self.llvm.create_local_variable(parameter_name, &temp_type),
+                )
+            };
+
+            index.associate_loaded_local_variable(type_name, name, variable)?;
+        }
+
+        Ok(())
+    }
+
+    /// generates a load-statement for the given members
+    /// for pous that take a struct-state-variable (or two for methods)
+    fn generate_local_struct_variable_accessors(
+        &self,
+        arg_index: u32,
+        index: &mut LlvmTypedIndex<'ink>,
+        type_name: &str,
+        current_function: FunctionValue<'ink>,
+        members: &[&VariableIndexEntry],
+    ) -> Result<(), Diagnostic> {
+        //Generate reference to parameter
+        // cannot use index from members because return and temp variables may not be considered for index in build_struct_gep
+        let mut var_count = 0;
+        for m in members.iter() {
+            let parameter_name = m.get_name();
+
+            let (name, variable) = if m.is_temp() {
                 let temp_type = index.get_associated_type(m.get_type_name())?;
                 (
                     parameter_name,

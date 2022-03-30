@@ -454,9 +454,16 @@ impl<'a, 'b> ExpressionCodeGenerator<'a, 'b> {
                 implementation_type: ImplementationType::Function,
                 ..
             } => {
-                let call_ptr = self
-                    .allocate_function_struct_instance(implementation.get_call_name(), operator)?;
-                (None, call_ptr)
+                //let call_ptr = self
+                //    .allocate_function_struct_instance(implementation.get_call_name(), operator)?;
+                (
+                    None,
+                    self.llvm
+                        .context
+                        .i32_type()
+                        .ptr_type(AddressSpace::Generic)
+                        .const_null(),
+                )
             }
             ImplementationIndexEntry {
                 implementation_type: ImplementationType::Method,
@@ -490,18 +497,75 @@ impl<'a, 'b> ExpressionCodeGenerator<'a, 'b> {
             }
         };
 
-        let (class_struct, instance, index_entry) = (class_ptr, call_ptr, implementation);
-        let function_name = index_entry.get_call_name();
-        //First go to the input block
-        let builder = &self.llvm.builder;
-        //Generate all parameters, this function may jump to the output block
-        let parameters_data = self.generate_input_function_parameters(
-            function_name,
-            class_struct,
-            instance,
-            parameters,
-        )?;
+        //foo(a)
+        let function_name = implementation.get_call_name();
+        //Functions
+        let parameters_data = if implementation.get_implementation_type()
+            == &ImplementationType::Function
+        {
+            let call_params = parameters
+                .as_ref()
+                .map(ast::flatten_expression_list)
+                .unwrap_or_default();
 
+            // foo(a,b,c)
+            // foo(z:= a, x:=c, y := b);
+            let declared_parameters = self
+                .index
+                .get_container_members(implementation.get_type_name())
+                .into_iter()
+                .filter(|it| it.is_parameter())
+                .collect::<Vec<_>>();
+            
+            // the parameters to be passed to the function call
+            let mut arguments = Vec::new();
+            for (idx, param_statement) in call_params.into_iter().enumerate() {
+                let (location, param_statement) = if let AstStatement::Assignment { left, right, .. } = param_statement
+                {
+                    //explicit
+                    let loc = if let AstStatement::Reference {
+                        name: left_name, ..
+                    } = left.as_ref()
+                    {
+                        let position = declared_parameters
+                            .iter()
+                            .position(|p| p.get_name() == left_name);
+                        position.ok_or_else(|| {
+                            Diagnostic::unresolved_reference(left_name, left.get_location())
+                        })
+                    } else {
+                        unreachable!("left of an assignment must be a reference");
+                    }?;
+
+                    (loc, right.as_ref())
+                } else {
+                    //implicit
+                    (idx, param_statement)
+                };
+
+                let parameter : BasicValueEnum = self
+                    .generate_element_pointer(param_statement)
+                    .or_else::<Diagnostic, _>(|_| {
+                        let value = self.generate_expression(param_statement)?;
+                        let parameter = self.llvm.builder.build_alloca(value.get_type(), "");
+                        self.llvm.builder.build_store(parameter, value);
+                        Ok(parameter)
+                    })
+                    .map(Into::into)?;
+
+                arguments.push((location, parameter));
+            }
+            arguments.sort_by(|(idx_a, _), (idx_b, _)| idx_a.cmp(idx_b));
+            
+            arguments.into_iter().map(|(_, v)| v.into()).collect::<Vec<BasicMetadataValueEnum>>()
+        } else {
+            // no function
+            //First go to the input block
+            //Generate all parameters, this function may jump to the output block
+            self.generate_input_function_parameters(function_name, class_ptr, call_ptr, parameters)?
+        };
+
+        let builder = &self.llvm.builder;
         let function = self
             .llvm_index
             .find_associated_implementation(function_name) //using the non error option to control the output error
@@ -521,7 +585,9 @@ impl<'a, 'b> ExpressionCodeGenerator<'a, 'b> {
             .try_as_basic_value();
 
         //build output-parameters
-        self.generate_output_function_parameters(function_name, instance, parameters)?;
+        if implementation.get_implementation_type() == &ImplementationType::Function {
+            self.generate_output_function_parameters(function_name, call_ptr, parameters)?;
+        }
 
         // we return an uninitialized int pointer for void methods :-/
         // dont deref it!!

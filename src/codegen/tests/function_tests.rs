@@ -17,3 +17,23 @@ fn member_variables_in_body() {
 
     insta::assert_snapshot!(result, @"");
 }
+
+#[test]
+fn simple_call() {
+    let result = codegen(
+        r#"FUNCTION func : DINT
+            VAR_INPUT x : DINT; END_VAR
+        END_FUNCTION
+
+        PROGRAM main
+            VAR a : DINT; END_VAR
+
+            func(a);
+            func(1);
+            func(1+a);
+        END_PROGRAM
+        "#
+    );
+
+    insta::assert_snapshot!(result, @"");
+}

@@ -58,14 +58,14 @@ pub fn generate_data_types<'ink>(
         .index
         .get_types()
         .iter()
-        .filter(|(_, it)| !it.get_type_information().is_generic())
+        .filter(|(_, it)| !it.get_type_information().is_generic(index))
         .map(|(a, b)| (a.as_str(), b))
         .collect::<Vec<(&str, &DataType)>>();
     let pou_types = generator
         .index
         .get_pou_types()
         .iter()
-        .filter(|(_, it)| !it.get_type_information().is_generic())
+        .filter(|(_, it)| !it.get_type_information().is_generic(index))
         .map(|(a, b)| (a.as_str(), b))
         .collect::<Vec<(&str, &DataType)>>();
 

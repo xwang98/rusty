@@ -1246,6 +1246,9 @@ impl<'i> TypeAnnotator<'i> {
         member: &VariableIndexEntry,
         statement: &AstStatement,
     ) -> Option<(&'idx str, &'idx str)> {
+
+        
+            
         //If generic add a generic annotation
         if let Some(DataTypeInformation::Generic { generic_symbol, .. }) =
             index.find_effective_type_info(member.get_type_name())
@@ -1308,6 +1311,7 @@ impl<'i> TypeAnnotator<'i> {
                             &name,
                             implementation.get_associated_class_name(),
                             implementation.get_implementation_type().clone(),
+                            implementation.generic
                         );
                         self.index_generic_type(pou, &name, generic_map);
                     }

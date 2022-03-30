@@ -149,7 +149,7 @@ const DEFAULT_FUNC: &str = r#"
 ///  ... generate the body of the function_block (@main_fun). All passed variables are allocated on the stack.
 ///  ... a return variable is allocated on the stack and returned at the end of the function
 #[test]
-fn function_get_a_method_with_a_self_parameter() {
+fn function_get_a_method_with_by_ref_parameters() {
     insta::assert_snapshot!(codegen(DEFAULT_FUNC), @"");
 }
 

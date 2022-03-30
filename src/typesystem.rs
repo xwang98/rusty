@@ -331,9 +331,22 @@ impl DataTypeInformation {
         }
     }
 
-    pub fn is_generic(&self) -> bool {
+    pub fn is_generic(&self, index: &Index) -> bool {
         match self {
             DataTypeInformation::Struct { generics, .. } => !generics.is_empty(),
+            DataTypeInformation::Array {
+                inner_type_name, ..
+            }
+            | DataTypeInformation::Pointer {
+                inner_type_name, ..
+            }
+            | DataTypeInformation::Alias {
+                referenced_type: inner_type_name,
+                ..
+            } => index
+                .find_effective_type(inner_type_name)
+                .map(|dt| dt.get_type_information().is_generic(index))
+                .unwrap_or(false),
             DataTypeInformation::Generic { .. } => true,
             _ => false,
         }

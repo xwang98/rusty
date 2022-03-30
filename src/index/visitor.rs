@@ -5,7 +5,7 @@ use crate::ast::{
     PouType, SourceRange, TypeNature, UserTypeDeclaration, VariableBlock, VariableBlockType,
 };
 use crate::diagnostics::Diagnostic;
-use crate::index::{DeclarationType, Index, MemberInfo};
+use crate::index::{ArgumentType, Index, MemberInfo};
 use crate::lexer::IdProvider;
 use crate::typesystem::{self, *};
 
@@ -48,12 +48,7 @@ pub fn visit_pou(index: &mut Index, pou: &Pou) {
     let mut count = 0;
     let mut varargs = None;
     for block in &pou.variable_blocks {
-        let block_type = if pou.pou_type == PouType::Function {
-            DeclarationType::ByRef(get_variable_type_from_block(block))
-        } else {
-            DeclarationType::ByVal(get_variable_type_from_block(block))
-        };
-
+        let block_type = get_declaration_type_for(block, &pou.pou_type);
         for var in &block.variables {
             if let DataTypeDeclaration::DataTypeDefinition {
                 data_type: ast::DataType::VarArgs { referenced_type },
@@ -71,9 +66,11 @@ pub fn visit_pou(index: &mut Index, pou: &Pou) {
             member_names.push(var.name.clone());
 
             let var_type_name = var.data_type.get_name().expect("named datatype");
-            let type_name = if block_type.get_variable_type() == VariableType::InOut {
-                //register a pointer type for the var_in_out
-                register_inout_pointer_type_for(index, var_type_name)
+            let type_name = if block_type.is_by_ref()
+ //               && pou.generics.is_empty() //skip generics!! TODO this is wrong!
+            {
+                //register a pointer type for argument
+                register_byref_pointer_type_for(index, var_type_name)
             } else {
                 var_type_name.to_string()
             };
@@ -115,7 +112,7 @@ pub fn visit_pou(index: &mut Index, pou: &Pou) {
             MemberInfo {
                 container_name: &pou.name,
                 variable_name: pou.get_return_name(),
-                variable_linkage: DeclarationType::ByVal( VariableType::Return),
+                variable_linkage: ArgumentType::ByVal(VariableType::Return),
                 variable_type_name: return_type.get_name().unwrap_or_default(),
                 is_constant: false, //return variables are not constants
                 binding: None,
@@ -172,6 +169,21 @@ pub fn visit_pou(index: &mut Index, pou: &Pou) {
     };
 }
 
+fn get_declaration_type_for(block: &VariableBlock, pou_type: &PouType) -> ArgumentType {
+    if (*pou_type == PouType::Function
+        && !matches!(
+            block.variable_block_type,
+            VariableBlockType::Local | VariableBlockType::Temp
+        ))
+        || matches!(block.variable_block_type, VariableBlockType::InOut)
+    {
+        // function parameters or in_outs
+        ArgumentType::ByRef(get_variable_type_from_block(block))
+    } else {
+        ArgumentType::ByVal(get_variable_type_from_block(block))
+    }
+}
+
 fn visit_implementation(index: &mut Index, implementation: &Implementation) {
     let pou_type = &implementation.pou_type;
     index.register_implementation(
@@ -179,6 +191,7 @@ fn visit_implementation(index: &mut Index, implementation: &Implementation) {
         &implementation.type_name,
         pou_type.get_optional_owner_class().as_ref(),
         pou_type.into(),
+        implementation.generic,
     );
     //if we are registing an action, also register a datatype for it
     if pou_type == &PouType::Action {
@@ -195,7 +208,7 @@ fn visit_implementation(index: &mut Index, implementation: &Implementation) {
     }
 }
 
-fn register_inout_pointer_type_for(index: &mut Index, inner_type_name: &str) -> String {
+fn register_byref_pointer_type_for(index: &mut Index, inner_type_name: &str) -> String {
     //get unique name
     let type_name = format!("auto_pointer_to_{}", inner_type_name);
 
@@ -337,7 +350,7 @@ fn visit_data_type(
                     MemberInfo {
                         container_name: struct_name,
                         variable_name: &var.name,
-                        variable_linkage: DeclarationType::ByVal(VariableType::Local),
+                        variable_linkage: ArgumentType::ByVal(VariableType::Local),
                         variable_type_name: member_type,
                         is_constant: false, //struct members are not constants //TODO thats probably not true (you can define a struct in an CONST-block?!)
                         binding,

@@ -30,7 +30,7 @@ pub struct VariableIndexEntry {
     /// an optional initial value of this variable
     pub initial_value: Option<ConstId>,
     /// the type of variable
-    pub variable_type: DeclarationType,
+    pub variable_type: ArgumentType,
     /// true if this variable is a compile-time-constant
     is_constant: bool,
     /// the variable's datatype
@@ -92,7 +92,7 @@ impl HardwareBinding {
 pub struct MemberInfo<'b> {
     container_name: &'b str,
     variable_name: &'b str,
-    variable_linkage: DeclarationType,
+    variable_linkage: ArgumentType,
     variable_type_name: &'b str,
     binding: Option<HardwareBinding>,
     is_constant: bool,
@@ -103,7 +103,7 @@ impl VariableIndexEntry {
         name: &str,
         qualified_name: &str,
         data_type_name: &str,
-        variable_type: DeclarationType,
+        variable_type: ArgumentType,
         location_in_parent: u32,
         source_location: SourceRange,
     ) -> Self {
@@ -131,7 +131,7 @@ impl VariableIndexEntry {
             name: name.to_string(),
             qualified_name: qualified_name.to_string(),
             initial_value: None,
-            variable_type: DeclarationType::ByVal(VariableType::Global),
+            variable_type: ArgumentType::ByVal(VariableType::Global),
             is_constant: false,
             data_type_name: data_type_name.to_string(),
             location_in_parent: 0,
@@ -216,7 +216,7 @@ impl VariableIndexEntry {
         self.variable_type.get_variable_type()
     }
 
-    pub fn get_declaration_type(&self) -> DeclarationType {
+    pub fn get_declaration_type(&self) -> ArgumentType {
         self.variable_type
     }
 
@@ -237,17 +237,21 @@ impl VariableIndexEntry {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]
-pub enum DeclarationType {
+pub enum ArgumentType {
     ByVal(VariableType),
     ByRef(VariableType)
 }
 
-impl DeclarationType {
+impl ArgumentType {
     pub fn get_variable_type(&self) -> VariableType {
         match self {
-            DeclarationType::ByVal(t) => *t,
-            DeclarationType::ByRef(t) => *t,
+            ArgumentType::ByVal(t) => *t,
+            ArgumentType::ByRef(t) => *t,
         }
+    }
+
+    fn is_by_ref(&self) -> bool {
+        matches!(self, ArgumentType::ByRef(..))
     }
 }
 
@@ -302,6 +306,7 @@ pub struct ImplementationIndexEntry {
     pub(crate) type_name: String,
     pub(crate) associated_class: Option<String>,
     pub(crate) implementation_type: ImplementationType,
+    pub(crate) generic: bool,
 }
 
 impl ImplementationIndexEntry {
@@ -327,6 +332,7 @@ impl From<&Implementation> for ImplementationIndexEntry {
             type_name: implementation.type_name.clone(),
             associated_class: pou_type.get_optional_owner_class(),
             implementation_type: pou_type.into(),
+            generic: implementation.generic
         }
     }
 }
@@ -810,6 +816,7 @@ impl Index {
         type_name: &str,
         associated_class_name: Option<&String>,
         impl_type: ImplementationType,
+        generic: bool,
     ) {
         self.implementations.insert(
             call_name.to_lowercase(),
@@ -818,6 +825,7 @@ impl Index {
                 type_name: type_name.into(),
                 associated_class: associated_class_name.map(|str| str.into()),
                 implementation_type: impl_type,
+                generic
             },
         );
     }

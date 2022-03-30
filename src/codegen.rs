@@ -145,7 +145,7 @@ impl<'ink> CodeGen<'ink> {
             if implementation.linkage != LinkageType::External
                 && !global_index
                     .get_type_information_or_void(&implementation.type_name)
-                    .is_generic()
+                    .is_generic(global_index)
             {
                 pou_generator.generate_implementation(implementation)?;
             }

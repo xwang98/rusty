@@ -11,7 +11,7 @@ fn generics_saved_in_index() {
     );
 
     let foo_info = index.find_effective_type_info("foo").unwrap();
-    assert!(foo_info.is_generic());
+    assert!(foo_info.is_generic(&index));
     if let DataTypeInformation::Struct { generics, .. } = foo_info {
         let t = &generics[0];
         assert_eq!(

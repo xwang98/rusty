@@ -177,9 +177,9 @@ fn initial_values_of_function_members() {
     let function = r"
         FUNCTION other : DINT
         VAR
-            x   : DINT := 77;
-            y   : DINT := 88;
-            z   : DINT := 99;
+        x   : DINT := 77;
+        y   : DINT := 88;
+        z   : DINT := 99;
         END_VAR
         VAR_INPUT
             index : INT;
@@ -1075,11 +1075,61 @@ fn initialization_of_struct_in_function() {
 #[test]
 fn initialized_array_in_function() {
     let function = "
-		FUNCTION main : INT
+		FUNCTION main : ARRAY[-1..2] OF DINT
+		VAR
+			arr_var : ARRAY[-1..2] OF DINT := [77,20,300,4000];
+		END_VAR
+            main := arr_var;
+            //main[-1] := 1;
+		END_FUNCTION
+        ";
+
+    let mut maintype = rusty::runner::MainType::default();
+
+    #[repr(C)]
+    #[derive(PartialEq,Debug)]
+    struct arr {
+       x : [i32; 4],
+    }
+    let res: arr = compile_and_run(function.to_string(), &mut maintype);
+    assert_eq!(arr { x : [1, 2, 3, 4]}, res);
+}
+
+#[test]
+fn initialized_array_type_in_function() {
+    let function = "
+    TYPE arr : ARRAY[-1..2] OF DINT := [1,2,3,4]; END_TYPE
+        FUNCTION main : arr
+        VAR
+            arr_var : arr;
+        END_VAR
+            main := arr_var;
+        END_PROGRAM
+		";
+    #[allow(dead_code)]
+    struct MainType {
+        arr: [i32; 4],
+    }
+    let mut maintype = MainType { arr: [0; 4] };
+    let _: i32 = compile_and_run(function.to_string(), &mut maintype);
+    assert_eq!([1, 2, 3, 4], maintype.arr);
+}
+
+#[test]
+fn initialized_array_in_program() {
+    let function = "
+		PROGRAM target
 		VAR
 			arr_var : ARRAY[-1..2] OF DINT := [1,2,3,4];
 		END_VAR
-		END_FUNCTION
+		END_PROGRAM
+
+        PROGRAM main
+        VAR
+			arr_var : ARRAY[-1..2] OF DINT;
+		END_VAR
+            arr_var := target.arr_var;
+        END_PROGRAM
 		";
 
     #[allow(dead_code)]
@@ -1092,14 +1142,23 @@ fn initialized_array_in_function() {
 }
 
 #[test]
-fn initialized_array_type_in_function() {
+fn initialized_array_type_in_program() {
     let function = "
     TYPE arr : ARRAY[-1..2] OF DINT := [1,2,3,4]; END_TYPE
-		FUNCTION main : INT
+		PROGRAM target
 		VAR
 			arr_var : arr;
 		END_VAR
-		END_FUNCTION
+		END_PROGRAM
+
+        PROGRAM main
+        VAR
+            arr_var : arr;
+        END_VAR
+        VAR_TEMP
+        END_VAR
+            arr_var := target.arr_var;
+        END_PROGRAM
 		";
     #[allow(dead_code)]
     struct MainType {
