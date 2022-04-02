@@ -668,38 +668,44 @@ fn case_statement() {
     #[repr(C)]
     struct MainType {
         i: i16,
+        ret: i16,
     }
     let function = r#"
-    FUNCTION main : DINT
+    PROGRAM main
     VAR_INPUT
         i : INT;
+        ret : INT;
     END_VAR
-    main := 1;
+    ret := 1;
     
     CASE i OF
-        1,2,3,4,5,6,7,8,9: main := 101;
-        10,11,12..19: main := 201;
-        20..24, 25..29: main := 301;
-        ELSE main := 7;
+        1,2,3,4,5,6,7,8,9: ret := 101;
+        10,11,12..19: ret := 201;
+        20..24, 25..29: ret := 301;
+        ELSE ret := 7;
     END_CASE
-    END_FUNCTION
+    END_PROGRAM
     "#;
 
     (1..9).for_each(|i| {
-        let res: i32 = compile_and_run(function.to_string(), &mut MainType { i });
-        assert_eq!(res, 101);
+        let p = &mut MainType { i, ret: 0 };
+        let _: i32 = compile_and_run(function.to_string(), p);
+        assert_eq!(p.ret, 101);
     });
 
     (10..19).for_each(|i| {
-        let res: i32 = compile_and_run(function.to_string(), &mut MainType { i });
-        assert_eq!(res, 201);
+        let p = &mut MainType { i, ret: 0 };
+        let _: i32 = compile_and_run(function.to_string(), p);
+        assert_eq!(p.ret, 201);
     });
 
     (20..29).for_each(|i| {
-        let res: i32 = compile_and_run(function.to_string(), &mut MainType { i });
-        assert_eq!(res, 301);
+        let p = &mut MainType { i, ret: 0 };
+        let _: i32 = compile_and_run(function.to_string(), p);
+        assert_eq!(p.ret, 301);
     });
 
-    let res: i32 = compile_and_run(function.to_string(), &mut MainType { i: 999 });
-    assert_eq!(res, 7);
+    let p = &mut MainType { i: 999, ret: 0 };
+    let _: i32 = compile_and_run(function.to_string(), p);
+    assert_eq!(p.ret, 7);
 }
