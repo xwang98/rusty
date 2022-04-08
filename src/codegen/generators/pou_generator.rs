@@ -380,7 +380,6 @@ impl<'ink, 'cg> PouGenerator<'ink, 'cg> {
             } else if m.is_parameter() {
                 let ptr_value = current_function
                     .get_nth_param(var_count)
-                    .map(BasicValueEnum::into_pointer_value)
                     .ok_or_else(|| Diagnostic::missing_function(m.source_location.clone()))?;
 
                 let ptr = self.llvm.create_local_variable(

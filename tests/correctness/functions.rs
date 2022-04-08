@@ -13,7 +13,7 @@ fn max_function() {
 
     let function = r#"
 
-    FUNCTION MAX : DINT 
+    FUNCTION MAX : INT 
     VAR_INPUT 
         a : INT;
         b : INT;
@@ -27,7 +27,7 @@ fn max_function() {
     END_FUNCTION
 
     PROGRAM main
-    VAR_INPUT
+    VAR
         theA : INT;
         theB : INT;
         ret: INT;

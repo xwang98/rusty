@@ -160,7 +160,6 @@ fn calling_a_function() {
     let calling_prg = format!(r#"
         PROGRAM prg
             VAR x, z    : INT;      END_VAR
-            
             main_fun(x, z); 
         END_FUNCTION
 

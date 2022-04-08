@@ -1211,6 +1211,7 @@ fn initialized_array_in_program() {
 fn initialized_array_type_in_program() {
     let function = "
         TYPE arr : ARRAY[-1..2] OF DINT := [1,2,3,4]; END_TYPE
+
 		PROGRAM target
 		VAR
 			arr_var : arr;
@@ -1218,12 +1219,11 @@ fn initialized_array_type_in_program() {
 		END_PROGRAM
 
         PROGRAM main
-        VAR
-            arr_var : arr;
-        END_VAR
-        VAR_TEMP
-        END_VAR
-            arr_var := target.arr_var;
+            VAR
+                arr_var : ARRAY[-1..2] OF DINT;
+            END_VAR
+           
+           arr_var := target.arr_var;
         END_PROGRAM
 		";
     #[allow(dead_code)]
@@ -1240,12 +1240,22 @@ fn intial_values_diverge_from_type() {
     let function = "
     TYPE arr : ARRAY[-1..2] OF DINT := [1,2,3,4]; END_TYPE
     TYPE myInt : DINT := 4; END_TYPE
-		FUNCTION main : INT
-		VAR
-			arr_var : arr := [5,6,7,8];
-            i : myInt := 5;
-		END_VAR
-		END_FUNCTION
+
+    PROGRAM target
+    VAR 
+		arr_var : arr := [5,6,7,8];
+        i : myInt := 5;
+    END_VAR
+    END_PROGRAM
+
+    PROGRAM main
+    VAR
+        arr_var : arr;
+        i : myInt;
+    END_VAR
+    arr_var := target.arr_var;
+    i := target.i;
+    END_PROGRAM
 		";
     #[allow(dead_code)]
     struct MainType {

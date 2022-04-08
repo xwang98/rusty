@@ -3,7 +3,7 @@ use super::super::*;
 use inkwell::targets::{InitializationConfig, Target};
 use rusty::runner::run_no_param;
 
-extern "C" fn times_two(val: &i32) -> i32 {
+extern "C" fn times_two(val: i32) -> i32 {
     val * 2
 }
 

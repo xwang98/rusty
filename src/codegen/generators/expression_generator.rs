@@ -3,7 +3,7 @@ use crate::{
     ast::{self, DirectAccessType, SourceRange},
     codegen::llvm_typesystem,
     diagnostics::{Diagnostic, INTERNAL_LLVM_ERROR},
-    index::{ImplementationIndexEntry, ImplementationType, Index, VariableIndexEntry},
+    index::{ImplementationIndexEntry, ImplementationType, Index, VariableIndexEntry, ArgumentType},
     resolver::{AnnotationMap, AstAnnotations, StatementAnnotation},
     typesystem::{
         is_same_type_class, Dimension, StringEncoding, DINT_TYPE, INT_SIZE, INT_TYPE, LINT_TYPE,
@@ -497,12 +497,11 @@ impl<'a, 'b> ExpressionCodeGenerator<'a, 'b> {
             }
         };
 
-        //foo(a)
         let function_name = implementation.get_call_name();
-        //Functions
         let parameters_data = if implementation.get_implementation_type()
-            == &ImplementationType::Function
+        == &ImplementationType::Function
         {
+            //Functions
             let call_params = parameters
                 .as_ref()
                 .map(ast::flatten_expression_list)
@@ -543,15 +542,21 @@ impl<'a, 'b> ExpressionCodeGenerator<'a, 'b> {
                     (idx, param_statement)
                 };
 
-                let parameter : BasicValueEnum = self
-                    .generate_element_pointer(param_statement)
-                    .or_else::<Diagnostic, _>(|_| {
-                        let value = self.generate_expression(param_statement)?;
-                        let parameter = self.llvm.builder.build_alloca(value.get_type(), "");
-                        self.llvm.builder.build_store(parameter, value);
-                        Ok(parameter)
-                    })
-                    .map(Into::into)?;
+                let v = declared_parameters[location];
+
+                let parameter : BasicValueEnum = if v.get_declaration_type().is_by_ref() {
+                    self
+                        .generate_element_pointer(param_statement)
+                        .or_else::<Diagnostic, _>(|_| {
+                            let value = self.generate_expression(param_statement)?;
+                            let parameter = self.llvm.builder.build_alloca(value.get_type(), "");
+                            self.llvm.builder.build_store(parameter, value);
+                            Ok(parameter)
+                        })
+                        .map(Into::into)?
+                }else{
+                    self.generate_expression(param_statement)?
+                };
 
                 arguments.push((location, parameter));
             }
@@ -585,7 +590,7 @@ impl<'a, 'b> ExpressionCodeGenerator<'a, 'b> {
             .try_as_basic_value();
 
         //build output-parameters
-        if implementation.get_implementation_type() == &ImplementationType::Function {
+        if implementation.get_implementation_type() != &ImplementationType::Function {
             self.generate_output_function_parameters(function_name, call_ptr, parameters)?;
         }
 

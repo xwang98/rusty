@@ -48,7 +48,7 @@ pub fn visit_pou(index: &mut Index, pou: &Pou) {
     let mut count = 0;
     let mut varargs = None;
     for block in &pou.variable_blocks {
-        let block_type = get_declaration_type_for(block, &pou.pou_type);
+        let block_type = get_declaration_type_for(block);
         for var in &block.variables {
             if let DataTypeDeclaration::DataTypeDefinition {
                 data_type: ast::DataType::VarArgs { referenced_type },
@@ -169,15 +169,9 @@ pub fn visit_pou(index: &mut Index, pou: &Pou) {
     };
 }
 
-fn get_declaration_type_for(block: &VariableBlock, pou_type: &PouType) -> ArgumentType {
-    if (*pou_type == PouType::Function
-        && !matches!(
-            block.variable_block_type,
-            VariableBlockType::Local | VariableBlockType::Temp
-        ))
-        || matches!(block.variable_block_type, VariableBlockType::InOut)
+fn get_declaration_type_for(block: &VariableBlock) -> ArgumentType {
+    if matches!(block.variable_block_type, VariableBlockType::InOut)
     {
-        // function parameters or in_outs
         ArgumentType::ByRef(get_variable_type_from_block(block))
     } else {
         ArgumentType::ByVal(get_variable_type_from_block(block))
@@ -486,21 +480,31 @@ fn visit_data_type(
                 dimensions,
             };
 
-            let init = index
+            let init1 = index
                 .get_mut_const_expressions()
                 .maybe_add_constant_expression(
                     type_declaration.initializer.clone(),
                     name,
                     scope.clone(),
                 );
+            // TODO unfortunately we cannot share const-expressions between multiple
+            // index-entries
+             let init2 = index
+                .get_mut_const_expressions()
+                .maybe_add_constant_expression(
+                    type_declaration.initializer.clone(),
+                    name,
+                    scope.clone(),
+                );           
+
             index.register_type(typesystem::DataType {
                 name: name.to_string(),
-                initial_value: init,
+                initial_value: init1,
                 information,
                 nature: TypeNature::Any,
             });
             let global_init_name = crate::index::get_initializer_name(name);
-            if init.is_some() {
+            if init2.is_some() {
                 let variable = VariableIndexEntry::create_global(
                     global_init_name.as_str(),
                     global_init_name.as_str(),
@@ -508,7 +512,7 @@ fn visit_data_type(
                     type_declaration.location.clone(),
                 )
                 .set_constant(true)
-                .set_initial_value(init);
+                .set_initial_value(init2);
                 index.register_global_initializer(&global_init_name, variable);
             }
         }

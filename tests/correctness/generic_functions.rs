@@ -8,11 +8,11 @@ struct MainType {
     b: f32,
 }
 
-extern "C" fn times_two_int(val: &i16) -> i16 {
+extern "C" fn times_two_int(val: i16) -> i16 {
     val * 2
 }
 
-extern "C" fn times_two_real(val : &f32) -> f32 {
+extern "C" fn times_two_real(val : f32) -> f32 {
     val * 2.0f32
 }
 

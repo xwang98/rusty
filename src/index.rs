@@ -250,7 +250,7 @@ impl ArgumentType {
         }
     }
 
-    fn is_by_ref(&self) -> bool {
+    pub fn is_by_ref(&self) -> bool {
         matches!(self, ArgumentType::ByRef(..))
     }
 }
